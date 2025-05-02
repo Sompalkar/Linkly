@@ -13,13 +13,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Bell, Menu, User, LogOut, Settings } from "lucide-react"
+import { Bell, Menu, User, LogOut, Settings, Search, Plus } from "lucide-react"
 import { motion } from "framer-motion"
 import { useState } from "react"
+import { Input } from "@/components/ui/input"
 
 export function DashboardHeader() {
   const { user, logout } = useAuth()
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [notificationCount, setNotificationCount] = useState(3)
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -30,27 +32,48 @@ export function DashboardHeader() {
             <span className="sr-only">Toggle menu</span>
           </Button>
           <Link href="/dashboard" className="flex items-center space-x-2">
-            <span className="text-xl font-bold gradient-text">Linkly</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-transparent bg-clip-text">
+              Linkly
+            </span>
           </Link>
         </div>
-        <div className="hidden md:flex">
+        <div className="hidden md:flex items-center gap-4">
           <Link href="/dashboard" className="flex items-center space-x-2">
             <motion.span
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5 }}
-              className="text-xl font-bold gradient-text"
+              className="text-xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-transparent bg-clip-text"
             >
               Linkly
             </motion.span>
           </Link>
+          <div className="relative w-64 ml-6">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              className="pl-8 h-9 bg-muted/40 border-none focus-visible:ring-1 focus-visible:ring-purple-500"
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="hidden md:flex items-center gap-1 text-xs bg-muted/40 hover:bg-muted"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New Link
+          </Button>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="relative">
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               <span className="sr-only">Notifications</span>
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-cyan-500" />
+              {notificationCount > 0 && (
+                <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-[10px] flex items-center justify-center text-white font-medium">
+                  {notificationCount}
+                </span>
+              )}
             </Button>
           </motion.div>
           <ModeToggle />
@@ -59,7 +82,7 @@ export function DashboardHeader() {
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8 border-2 border-primary/20">
                   <AvatarImage src="/placeholder.svg?height=32&width=32" alt={user?.name || "User"} />
-                  <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-blue-600 text-white">
+                  <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
                     {user?.name?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>

@@ -3,24 +3,21 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/context/auth-context"
-import { Loader2, Link2, Copy, ExternalLink } from "lucide-react"
+import { Loader2, Link2, Copy, ExternalLink, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { fetchDomains, createLink } from "@/lib/api"
 
-export function CreateLinkCard() {
+export function QuickLinkCreator() {
   const [url, setUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [createdLink, setCreatedLink] = useState<string | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
   const { token } = useAuth()
   const { toast } = useToast()
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,8 +81,6 @@ export function CreateLinkCard() {
         title: "Link created!",
         description: `Your shortened URL is ready to use`,
       })
-
-      // Don't clear the URL field yet so user can see what they shortened
     } catch (error) {
       console.error("Error creating link:", error)
       toast({
@@ -114,71 +109,81 @@ export function CreateLinkCard() {
     }
   }
 
-  const createNewLink = () => {
+  const reset = () => {
     setUrl("")
     setCreatedLink(null)
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-      <Card className="hover-card overflow-hidden border-gradient">
-        <CardHeader className="pb-2 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5">
-          <CardTitle className="flex items-center">
-            <Link2 className="mr-2 h-5 w-5 text-purple-500" />
-            Create a Short Link
-          </CardTitle>
-          <CardDescription>Enter a URL to generate a shortened link</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <AnimatePresence mode="wait">
-            {!createdLink ? (
-              <motion.form
-                key="form"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onSubmit={handleSubmit}
-                className="space-y-4"
-              >
-                <div className="space-y-2">
-                  <Label htmlFor="url">URL to shorten</Label>
+    <>
+      <Button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-6 right-6 z-50 rounded-full shadow-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600"
+      >
+        <Link2 className="mr-2 h-4 w-4" />
+        Quick Shorten
+      </Button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-20 right-6 z-50 w-80 bg-background border rounded-lg shadow-lg p-4"
+          >
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-medium flex items-center">
+                <Link2 className="mr-2 h-4 w-4 text-purple-500" />
+                Quick Link Creator
+              </h3>
+              <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {!createdLink ? (
+                <motion.form
+                  key="form"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onSubmit={handleSubmit}
+                  className="space-y-3"
+                >
                   <Input
-                    id="url"
-                    placeholder="https://example.com/very-long-url-that-needs-shortening"
+                    placeholder="Enter URL to shorten"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     disabled={isLoading}
                     className="transition-all focus-within:border-purple-500"
                   />
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600"
-                  disabled={isLoading}
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Shorten URL"
+                    )}
+                  </Button>
+                </motion.form>
+              ) : (
+                <motion.div
+                  key="result"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-3"
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Shorten URL"
-                  )}
-                </Button>
-              </motion.form>
-            ) : (
-              <motion.div
-                key="result"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-4"
-              >
-                <div className="space-y-2">
-                  <Label htmlFor="shortUrl">Your shortened URL</Label>
                   <div className="flex">
                     <Input
-                      id="shortUrl"
                       value={createdLink}
                       readOnly
                       className="flex-1 bg-muted/50 font-mono text-sm"
@@ -186,31 +191,29 @@ export function CreateLinkCard() {
                     />
                     <Button variant="outline" size="icon" className="ml-2" onClick={copyToClipboard}>
                       <Copy className="h-4 w-4" />
-                      <span className="sr-only">Copy link</span>
                     </Button>
                     <Button variant="outline" size="icon" className="ml-2" onClick={openLink}>
                       <ExternalLink className="h-4 w-4" />
-                      <span className="sr-only">Open link</span>
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Click the link to copy it to your clipboard</p>
-                </div>
-                <div className="flex justify-between">
-                  <Button variant="outline" onClick={createNewLink}>
-                    Create Another Link
-                  </Button>
-                  <Button
-                    onClick={() => router.push("/dashboard/links")}
-                    className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600"
-                  >
-                    View All Links
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </CardContent>
-      </Card>
-    </motion.div>
+                  <div className="flex justify-between">
+                    <Button variant="outline" size="sm" onClick={reset}>
+                      Create Another
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => setIsOpen(false)}
+                      className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600"
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   )
 }

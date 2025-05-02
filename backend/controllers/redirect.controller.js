@@ -9,10 +9,18 @@ import geoip from "geoip-lite"
 export const handleRedirect = async (req, res) => {
   try {
     const { slug } = req.params
+
+    // Handle localhost development environment
     const host = req.get("host")
+    let domainQuery = { name: host }
+
+    // If we're in development mode and this is a local short link
+    if (req.isLocalShortLink && req.shortLinkDomain) {
+      domainQuery = { name: req.shortLinkDomain }
+    }
 
     // Find domain
-    const domain = await Domain.findOne({ name: host })
+    const domain = await Domain.findOne(domainQuery)
 
     if (!domain) {
       return res.status(404).send("Domain not found")
@@ -46,10 +54,12 @@ export const handleRedirect = async (req, res) => {
               <style>
                 body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
                 input, button { padding: 10px; margin: 10px 0; width: 100%; }
-                button { background: #0070f3; color: white; border: none; cursor: pointer; }
+                button { background: #8b5cf6; color: white; border: none; cursor: pointer; }
+                .logo { font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #8b5cf6; }
               </style>
             </head>
             <body>
+              <div class="logo">Linkly</div>
               <h1>Password Protected Link</h1>
               <p>This link is password protected. Please enter the password to continue.</p>
               <form method="GET">
@@ -71,11 +81,13 @@ export const handleRedirect = async (req, res) => {
               <style>
                 body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
                 input, button { padding: 10px; margin: 10px 0; width: 100%; }
-                button { background: #0070f3; color: white; border: none; cursor: pointer; }
+                button { background: #8b5cf6; color: white; border: none; cursor: pointer; }
                 .error { color: red; }
+                .logo { font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #8b5cf6; }
               </style>
             </head>
             <body>
+              <div class="logo">Linkly</div>
               <h1>Incorrect Password</h1>
               <p class="error">The password you entered is incorrect. Please try again.</p>
               <form method="GET">
@@ -132,6 +144,44 @@ export const handleRedirect = async (req, res) => {
     res.redirect(destinationUrl)
   } catch (error) {
     console.error("Redirect error:", error)
+    res.status(500).send("Server error")
+  }
+}
+
+// Handle development mode redirect for localhost
+export const handleLocalRedirect = async (req, res) => {
+  try {
+    if (!req.isLocalShortLink || !req.shortLinkSlug) {
+      return res.status(404).send("Not found")
+    }
+
+    // Use the slug from the middleware
+    const slug = req.shortLinkSlug
+
+    // Find domain (use DEFAULT_DOMAIN in development)
+    const domain = await Domain.findOne({
+      name: req.shortLinkDomain || process.env.DEFAULT_DOMAIN,
+    })
+
+    if (!domain) {
+      return res.status(404).send("Domain not found")
+    }
+
+    // Find link
+    const link = await Link.findOne({
+      domainId: domain._id,
+      slug,
+      isActive: true,
+    })
+
+    if (!link) {
+      return res.status(404).send("Link not found")
+    }
+
+    // Redirect to the original URL
+    res.redirect(link.originalUrl)
+  } catch (error) {
+    console.error("Local redirect error:", error)
     res.status(500).send("Server error")
   }
 }

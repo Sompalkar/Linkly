@@ -1,10 +1,11 @@
 import express from "express"
-import mongoose from "mongoose"
 import dotenv from "dotenv"
 import cookieParser from "cookie-parser"
 import helmet from "helmet"
 import rateLimit from "express-rate-limit"
 import corsMiddleware from "./middleware/cors.middleware.js"
+import developmentMiddleware from "./middleware/development.middleware.js"
+import mongoose from "mongoose"
 
 // Route imports
 import authRoutes from "./routes/auth.routes.js"
@@ -18,6 +19,12 @@ dotenv.config()
 const app = express()
 const PORT = process.env.PORT || 5000
 
+// Connect to MongoDB
+mongoose
+  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/url-shortener")
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.error("MongoDB connection error:", err))
+
 // Security middleware
 app.use(
   helmet({
@@ -27,6 +34,9 @@ app.use(
 
 // Use the enhanced CORS middleware
 app.use(corsMiddleware)
+
+// Development middleware for localhost handling
+app.use(developmentMiddleware)
 
 // Rate limiting
 const apiLimiter = rateLimit({
@@ -43,6 +53,13 @@ app.use("/api", apiLimiter)
 app.use(express.json())
 app.use(cookieParser())
 
+// Debug middleware to log requests
+app.use((req, res, next) => {
+  // console.log(`${req.method} ${req.url}`)
+  // console.log("Headers:", req.headers)
+  next()
+})
+
 // Routes
 app.use("/api/auth", authRoutes)
 app.use("/api/links", linkRoutes)
@@ -52,41 +69,12 @@ app.use("/", redirectRoutes) // Handle redirects
 
 // Health check endpoint
 app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() })
+  res.status(200).json({ status: "ok" })
 })
 
-// Database connection with retry logic
-const connectWithRetry = () => {
-  mongoose
-    .connect(process.env.MONGODB_URI)
-    .then(() => {
-      console.log("Connected to MongoDB")
-      app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`)
-      })
-    })
-    .catch((err) => {
-      console.error("MongoDB connection error:", err)
-      console.log("Retrying connection in 5 seconds...")
-      setTimeout(connectWithRetry, 5000)
-    })
-}
-
-connectWithRetry()
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack)
-  res.status(500).json({
-    success: false,
-    message: "Internal server error",
-    error: process.env.NODE_ENV === "development" ? err.message : undefined,
-  })
-})
-
-// Handle unhandled promise rejections
-process.on("unhandledRejection", (err) => {
-  console.error("Unhandled Rejection:", err)
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
 })
 
 export default app
