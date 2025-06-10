@@ -1,48 +1,61 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
-import { useAuth } from "@/context/auth-context"
-import { Loader2, User, Mail, Lock } from "lucide-react"
-import { motion } from "framer-motion"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import axios from "axios";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/context/auth-context";
+import { Loader2, User, Mail, Lock } from "lucide-react";
+import { motion } from "framer-motion";
+
+const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
 export function RegisterForm() {
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const { register } = useAuth()
-  const { toast } = useToast()
-  const router = useRouter()
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { register } = useAuth();
+  const { toast } = useToast();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
-      await register(name, email, password)
+      const response = await axios.post(`${baseURL}/api/auth/register`, {
+        name,
+        email,
+        password,
+      });
+
       toast({
         title: "Registration successful",
         description: "Welcome to Linkly! Your account has been created.",
-      })
-      router.push("/dashboard")
-    } catch (error) {
+      });
+
+      router.push("/login"); // Redirect to login after successful registration
+    } catch (error: any) {
       toast({
         title: "Registration failed",
-        description: error instanceof Error ? error.message : "Please check your information and try again.",
+        description:
+          error.response?.data?.message ||
+          error.message ||
+          "Please check your information and try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <motion.div
@@ -96,7 +109,9 @@ export function RegisterForm() {
               minLength={8}
             />
           </div>
-          <p className="text-xs text-muted-foreground">Password must be at least 8 characters long</p>
+          <p className="text-xs text-muted-foreground">
+            Password must be at least 8 characters long
+          </p>
         </div>
         <Button
           type="submit"
@@ -115,10 +130,13 @@ export function RegisterForm() {
       </form>
       <div className="mt-6 text-center text-sm">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link
+          href="/login"
+          className="font-medium text-primary hover:underline"
+        >
           Sign in
         </Link>
       </div>
     </motion.div>
-  )
+  );
 }

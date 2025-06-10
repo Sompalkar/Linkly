@@ -2,8 +2,8 @@ import type React from "react"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
-import { AuthProvider } from "@/context/auth-context"
-// import { Analytics } from "@vercel/analytics/react"
+import { RecoilProvider } from "@/components/providers/recoil-provider"
+import { Analytics } from "@vercel/analytics/react"
 import { Suspense } from "react"
 import "./globals.css"
 
@@ -24,7 +24,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <AuthProvider>
+          <RecoilProvider>
             <Suspense
               fallback={
                 <div className="flex items-center justify-center min-h-screen">
@@ -35,9 +35,9 @@ export default function RootLayout({
               {children}
             </Suspense>
             <Toaster />
-          </AuthProvider>
+          </RecoilProvider>
         </ThemeProvider>
-        {/* <Analytics /> */}
+        <Analytics />
       </body>
     </html>
   )

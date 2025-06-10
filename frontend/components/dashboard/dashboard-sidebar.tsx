@@ -82,35 +82,7 @@ export function DashboardSidebar() {
         </button>
       </div>
 
-      {!collapsed && (
-        <div className="p-4 border-b">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 border-2 border-primary/20">
-              <AvatarImage src="/placeholder.svg?height=40&width=40" alt={user?.name || "User"} />
-              <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-                {user?.name?.charAt(0) || "U"}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col">
-              <p className="text-sm font-medium">{user?.name || "User"}</p>
-              <p className="text-xs text-muted-foreground truncate max-w-[160px]">
-                {user?.email || "user@example.com"}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {collapsed && (
-        <div className="py-4 flex justify-center border-b">
-          <Avatar className="h-10 w-10 border-2 border-primary/20">
-            <AvatarImage src="/placeholder.svg?height=40&width=40" alt={user?.name || "User"} />
-            <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-              {user?.name?.charAt(0) || "U"}
-            </AvatarFallback>
-          </Avatar>
-        </div>
-      )}
+       
 
       <div className="flex-1 overflow-auto py-4">
         <div className="space-y-1 px-3">
