@@ -3,79 +3,32 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
-import { useAuth } from "@/context/auth-context"
-import { createLink, fetchDomains } from "@/lib/api"
-import { Link2, Copy, QrCode, Settings, Calendar, Lock, Tag, Loader2, CheckCircle, ExternalLink } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
-import { format } from "date-fns"
-import { useEffect } from "react"
+import { Loader2, LinkIcon, Copy, QrCode } from "lucide-react"
+import axios from "axios"
 
-interface Domain {
-  id: string
-  name: string
-  isDefault: boolean
-  isVerified: boolean
+interface CreateLinkCardProps {
+  className?: string
 }
 
-export function CreateLinkCard() {
-  const [originalUrl, setOriginalUrl] = useState("")
+export function CreateLinkCard({ className }: CreateLinkCardProps) {
+  const [url, setUrl] = useState("")
   const [customSlug, setCustomSlug] = useState("")
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [tags, setTags] = useState("")
-  const [password, setPassword] = useState("")
-  const [expiresAt, setExpiresAt] = useState("")
-  const [selectedDomain, setSelectedDomain] = useState("")
-  const [domains, setDomains] = useState<Domain[]>([])
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [createdLink, setCreatedLink] = useState<any>(null)
-  const { token } = useAuth()
+  const [shortUrl, setShortUrl] = useState("")
   const { toast } = useToast()
-
-  useEffect(() => {
-    const loadDomains = async () => {
-      if (!token) return
-
-      try {
-        const data = await fetchDomains(token)
-        setDomains(data.data.domains)
-        const defaultDomain = data.data.domains.find((d: Domain) => d.isDefault)
-        if (defaultDomain) {
-          setSelectedDomain(defaultDomain.id)
-        }
-      } catch (error) {
-        console.error("Error loading domains:", error)
-      }
-    }
-
-    loadDomains()
-  }, [token])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!originalUrl.trim()) {
+    if (!url) {
       toast({
-        title: "URL required",
+        title: "URL is required",
         description: "Please enter a URL to shorten",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!token) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to create links",
         variant: "destructive",
       })
       return
@@ -84,45 +37,22 @@ export function CreateLinkCard() {
     setIsLoading(true)
 
     try {
-      const linkData: any = {
-        originalUrl: originalUrl.trim(),
-        title: title.trim() || undefined,
-        description: description.trim() || undefined,
-        customSlug: customSlug.trim() || undefined,
-        password: password.trim() || undefined,
-        expiresAt: expiresAt || undefined,
-        domainId: selectedDomain || undefined,
-      }
-
-      if (tags.trim()) {
-        linkData.tags = tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter((tag) => tag.length > 0)
-      }
-
-      const data = await createLink(token, linkData)
-      setCreatedLink(data.data.link)
-
-      toast({
-        title: "Link created successfully",
-        description: "Your short link is ready to use",
+      const response = await axios.post("/links", {
+        originalUrl: url,
+        slug: customSlug || undefined,
       })
 
-      // Reset form
-      setOriginalUrl("")
-      setCustomSlug("")
-      setTitle("")
-      setDescription("")
-      setTags("")
-      setPassword("")
-      setExpiresAt("")
-      setShowAdvanced(false)
-    } catch (error) {
-      console.error("Error creating link:", error)
+      if (response.data.success) {
+        setShortUrl(response.data.link.shortUrl)
+        toast({
+          title: "Link created!",
+          description: "Your shortened link is ready to use.",
+        })
+      }
+    } catch (error: any) {
       toast({
-        title: "Error creating link",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        title: "Failed to create link",
+        description: error.response?.data?.message || "An error occurred while creating your link.",
         variant: "destructive",
       })
     } finally {
@@ -130,317 +60,78 @@ export function CreateLinkCard() {
     }
   }
 
-  const handleCopyLink = (url: string) => {
-    navigator.clipboard.writeText(url)
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(shortUrl)
     toast({
       title: "Copied to clipboard",
-      description: "Short URL has been copied to your clipboard",
+      description: "Link has been copied to your clipboard.",
     })
   }
 
-  const handleDownloadQR = (qrCode: string, title: string) => {
-    const link = document.createElement("a")
-    link.href = qrCode
-    link.download = `${title || "qr-code"}.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  const reset = () => {
-    setCreatedLink(null)
-  }
-
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className={className}>
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <Link2 className="h-5 w-5 mr-2 text-purple-500" />
-          Create Short Link
-        </CardTitle>
-        <CardDescription>Transform your long URLs into short, shareable links</CardDescription>
+        <CardTitle>Create Link</CardTitle>
+        <CardDescription>Shorten a long URL with a custom slug or generate one automatically.</CardDescription>
       </CardHeader>
       <CardContent>
-        <AnimatePresence mode="wait">
-          {!createdLink ? (
-            <motion.form
-              key="form"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onSubmit={handleSubmit}
-              className="space-y-6"
-            >
-              {/* URL Input */}
-              <div className="space-y-2">
-                <Label htmlFor="originalUrl">Original URL *</Label>
+        <form onSubmit={handleSubmit}>
+          <div className="grid w-full items-center gap-4">
+            <div className="flex flex-col space-y-1.5">
+              <Label htmlFor="url">URL to shorten</Label>
+              <div className="relative">
+                <LinkIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="originalUrl"
-                  type="url"
+                  id="url"
                   placeholder="https://example.com/very-long-url"
-                  value={originalUrl}
-                  onChange={(e) => setOriginalUrl(e.target.value)}
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="pl-10"
                   disabled={isLoading}
-                  required
                 />
               </div>
-
-              {/* Domain Selection */}
-              {domains.length > 1 && (
-                <div className="space-y-2">
-                  <Label htmlFor="domain">Domain</Label>
-                  <select
-                    id="domain"
-                    value={selectedDomain}
-                    onChange={(e) => setSelectedDomain(e.target.value)}
-                    className="w-full px-3 py-2 border border-input bg-background rounded-md"
-                    disabled={isLoading}
-                  >
-                    {domains.map((domain) => (
-                      <option key={domain.id} value={domain.id}>
-                        {domain.name} {domain.isDefault && "(Default)"}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Custom Slug */}
-              <div className="space-y-2">
-                <Label htmlFor="customSlug">Custom Slug (Optional)</Label>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-muted-foreground">
-                    {domains.find((d) => d.id === selectedDomain)?.name || "somn.in"}/
-                  </span>
-                  <Input
-                    id="customSlug"
-                    placeholder="my-link"
-                    value={customSlug}
-                    onChange={(e) => setCustomSlug(e.target.value.replace(/[^a-zA-Z0-9-_]/g, ""))}
-                    disabled={isLoading}
-                    className="flex-1"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Leave empty to generate automatically. Only letters, numbers, hyphens, and underscores allowed.
-                </p>
-              </div>
-
-              {/* Advanced Options Toggle */}
-              <div className="flex items-center space-x-2">
-                <Switch id="advanced" checked={showAdvanced} onCheckedChange={setShowAdvanced} disabled={isLoading} />
-                <Label htmlFor="advanced" className="flex items-center cursor-pointer">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Advanced Options
-                </Label>
-              </div>
-
-              {/* Advanced Options */}
-              <AnimatePresence>
-                {showAdvanced && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-4 border-t pt-4"
-                  >
-                    {/* Title */}
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Title</Label>
-                      <Input
-                        id="title"
-                        placeholder="My Awesome Link"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        disabled={isLoading}
-                      />
-                    </div>
-
-                    {/* Description */}
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        placeholder="Brief description of your link"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        disabled={isLoading}
-                        rows={3}
-                      />
-                    </div>
-
-                    {/* Tags */}
-                    <div className="space-y-2">
-                      <Label htmlFor="tags">Tags</Label>
-                      <Input
-                        id="tags"
-                        placeholder="marketing, social, campaign"
-                        value={tags}
-                        onChange={(e) => setTags(e.target.value)}
-                        disabled={isLoading}
-                      />
-                      <p className="text-xs text-muted-foreground">Separate tags with commas</p>
-                    </div>
-
-                    {/* Password Protection */}
-                    <div className="space-y-2">
-                      <Label htmlFor="password" className="flex items-center">
-                        <Lock className="h-4 w-4 mr-2" />
-                        Password Protection
-                      </Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="Optional password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        disabled={isLoading}
-                      />
-                    </div>
-
-                    {/* Expiration */}
-                    <div className="space-y-2">
-                      <Label htmlFor="expiresAt" className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        Expiration Date
-                      </Label>
-                      <Input
-                        id="expiresAt"
-                        type="datetime-local"
-                        value={expiresAt}
-                        onChange={(e) => setExpiresAt(e.target.value)}
-                        disabled={isLoading}
-                        min={new Date().toISOString().slice(0, 16)}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+            </div>
+            <div className="flex flex-col space-y-1.5">
+              <Label htmlFor="slug">Custom slug (optional)</Label>
+              <Input
+                id="slug"
+                placeholder="my-custom-link"
+                value={customSlug}
+                onChange={(e) => setCustomSlug(e.target.value)}
                 disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating Link...
-                  </>
-                ) : (
-                  <>
-                    <Link2 className="mr-2 h-4 w-4" />
-                    Create Short Link
-                  </>
-                )}
-              </Button>
-            </motion.form>
-          ) : (
-            <motion.div
-              key="result"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="space-y-6"
-            >
-              {/* Success Message */}
-              <div className="text-center">
-                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Link Created Successfully!</h3>
-                <p className="text-muted-foreground">Your short link is ready to use</p>
-              </div>
-
-              {/* Link Details */}
-              <div className="space-y-4">
-                <div className="p-4 border rounded-lg bg-muted/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <Label className="text-sm font-medium">Short URL</Label>
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleCopyLink(createdLink.shortUrl)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={createdLink.shortUrl} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="font-mono text-lg text-purple-600 break-all">{createdLink.shortUrl}</div>
-                </div>
-
-                {createdLink.title && (
-                  <div>
-                    <Label className="text-sm font-medium">Title</Label>
-                    <p className="text-sm text-muted-foreground">{createdLink.title}</p>
-                  </div>
-                )}
-
-                {createdLink.description && (
-                  <div>
-                    <Label className="text-sm font-medium">Description</Label>
-                    <p className="text-sm text-muted-foreground">{createdLink.description}</p>
-                  </div>
-                )}
-
-                {createdLink.tags && createdLink.tags.length > 0 && (
-                  <div>
-                    <Label className="text-sm font-medium">Tags</Label>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {createdLink.tags.map((tag: string) => (
-                        <Badge key={tag} variant="secondary">
-                          <Tag className="h-3 w-3 mr-1" />
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {createdLink.expiresAt && (
-                  <div>
-                    <Label className="text-sm font-medium">Expires</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(createdLink.expiresAt), "PPP 'at' p")}
-                    </p>
-                  </div>
-                )}
-
-                {/* QR Code */}
-                {createdLink.qrCode && (
-                  <div className="text-center">
-                    <Label className="text-sm font-medium">QR Code</Label>
-                    <div className="mt-2">
-                      <img
-                        src={createdLink.qrCode || "/placeholder.svg"}
-                        alt="QR Code"
-                        className="mx-auto w-32 h-32 border rounded-lg"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => handleDownloadQR(createdLink.qrCode, createdLink.title)}
-                      >
-                        <QrCode className="h-4 w-4 mr-2" />
-                        Download QR Code
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex justify-center">
-                <Button onClick={reset} variant="outline">
-                  Create Another Link
-                </Button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              />
+            </div>
+          </div>
+          <Button
+            type="submit"
+            className="w-full mt-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Create Short Link"
+            )}
+          </Button>
+        </form>
       </CardContent>
+      {shortUrl && (
+        <CardFooter className="flex flex-col items-start space-y-2 border-t pt-4">
+          <div className="text-sm font-medium">Your shortened link:</div>
+          <div className="flex w-full items-center space-x-2">
+            <Input value={shortUrl} readOnly className="bg-muted" />
+            <Button size="icon" variant="outline" onClick={copyToClipboard}>
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button size="icon" variant="outline">
+              <QrCode className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardFooter>
+      )}
     </Card>
   )
 }
